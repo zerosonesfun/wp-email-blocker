@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Wilcosky Email Registration Blocker
  * Description: Block specific email domains and full email addresses from registering on your WordPress site—mandatory across all entry points including REST API and custom forms.
- * Version: 1.2.1
+ * Version: 1.2.2
  * Author: Billy Wilcosky
  * Text Domain: wilcosky-email-blocker
  * Domain Path: /languages
@@ -69,8 +69,7 @@ class Wilcosky_ERB {
     }
 
     public function sanitize_domains( $input ) {
-        $lines = preg_split( '/?
-/', $input );
+        $lines = preg_split( '/\r?\n/', $input );
         $clean = array();
         foreach ( $lines as $line ) {
             $d = trim( $line );
@@ -83,8 +82,7 @@ class Wilcosky_ERB {
     }
 
     public function sanitize_emails( $input ) {
-        $lines = preg_split( '/?
-/', $input );
+        $lines = preg_split( '/\r?\n/', $input );
         $clean = array();
         foreach ( $lines as $line ) {
             $e = trim( $line );
@@ -103,10 +101,8 @@ class Wilcosky_ERB {
     private function is_blocked( $email ) {
         $domains_opt = get_option( $this->opt_domains, '' );
         $emails_opt  = get_option( $this->opt_emails, '' );
-        $domains     = array_filter( array_map( 'trim', explode( "
-", strtolower( $domains_opt ) ) ) );
-        $emails      = array_filter( array_map( 'trim', explode( "
-", strtolower( $emails_opt ) ) ) );
+        $domains     = array_filter( array_map( 'trim', explode( "\n", strtolower( $domains_opt ) ) ) );
+        $emails      = array_filter( array_map( 'trim', explode( "\n", strtolower( $emails_opt ) ) ) );
 
         $email_lc = strtolower( $email );
         if ( in_array( $email_lc, $emails, true ) ) {
@@ -169,6 +165,9 @@ class Wilcosky_ERB {
         ?>
         <div class="wrap">
             <h1><?php esc_html_e( 'Email Registration Blocker Settings', 'wilcosky-email-blocker' ); ?></h1>
+            <?php if ( $test_result ) : ?>
+                <div class="notice notice-info"><p><?php echo esc_html( $test_result ); ?></p></div>
+            <?php endif; ?>
             <form method="post" action="options.php">
                 <?php settings_fields( 'wilcosky_erb_settings' ); ?>
                 <table class="form-table">
@@ -186,6 +185,14 @@ class Wilcosky_ERB {
                     </tr>
                 </table>
                 <?php submit_button(); ?>
+            </form>
+            <h2><?php esc_html_e( 'Test an Email', 'wilcosky-email-blocker' ); ?></h2>
+            <form method="post">
+                <?php wp_nonce_field( 'wilcosky_erb_settings' ); ?>
+                <p>
+                    <input type="email" name="wilcosky_erb_test_email" value="" placeholder="<?php esc_attr_e( 'Enter an email to test...', 'wilcosky-email-blocker' ); ?>" class="regular-text" />
+                    <?php submit_button( __( 'Test Email', 'wilcosky-email-blocker' ), 'primary', 'test_email', false ); ?>
+                </p>
             </form>
         </div>
         <?php
