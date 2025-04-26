@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Wilcosky Email Registration Blocker
  * Description: Block specific email domains and full email addresses from registering on your WordPress site—mandatory across all entry points including REST API and custom forms.
- * Version: 1.2.2
+ * Version: 1.2.5
  * Author: Billy Wilcosky
  * Text Domain: wilcosky-email-blocker
  * Domain Path: /languages
@@ -16,6 +16,7 @@ class Wilcosky_ERB {
     private $opt_domains        = 'wilcosky_erb_blocked_domains';
     private $opt_emails         = 'wilcosky_erb_blocked_emails';
     private $opt_cleanup_uninst = 'wilcosky_erb_cleanup_on_uninstall';
+    private static $cached = null;
 
     public function __construct() {
         add_action( 'admin_menu',    array( $this, 'add_settings_page' ) );
@@ -41,9 +42,9 @@ class Wilcosky_ERB {
             'wilcosky_erb_settings',
             $this->opt_domains,
             array(
-                'type'              => 'string',
+                'type'              => 'array',
                 'sanitize_callback' => array( $this, 'sanitize_domains' ),
-                'default'           => ''
+                'default'           => array()
             )
         );
 
@@ -51,9 +52,9 @@ class Wilcosky_ERB {
             'wilcosky_erb_settings',
             $this->opt_emails,
             array(
-                'type'              => 'string',
+                'type'              => 'array',
                 'sanitize_callback' => array( $this, 'sanitize_emails' ),
-                'default'           => ''
+                'default'           => array()
             )
         );
 
@@ -63,48 +64,61 @@ class Wilcosky_ERB {
             array(
                 'type'              => 'boolean',
                 'sanitize_callback' => array( $this, 'sanitize_cleanup_flag' ),
-                'default'           => 0
+                'default'           => false
             )
         );
     }
 
     public function sanitize_domains( $input ) {
-        $lines = preg_split( '/\r?\n/', $input );
+        if ( is_string( $input ) ) {
+            $input = preg_split( '/\r?\n/', $input );
+        }
         $clean = array();
-        foreach ( $lines as $line ) {
+        foreach ( (array) $input as $line ) {
             $d = trim( $line );
             if ( $d === '' ) {
                 continue;
             }
             $clean[] = sanitize_text_field( strtolower( $d ) );
         }
-        return implode( PHP_EOL, $clean );
+        return $clean;
     }
 
     public function sanitize_emails( $input ) {
-        $lines = preg_split( '/\r?\n/', $input );
+        if ( is_string( $input ) ) {
+            $input = preg_split( '/\r?\n/', $input );
+        }
         $clean = array();
-        foreach ( $lines as $line ) {
+        foreach ( (array) $input as $line ) {
             $e = trim( $line );
             if ( $e === '' || ! is_email( $e ) ) {
                 continue;
             }
             $clean[] = sanitize_email( strtolower( $e ) );
         }
-        return implode( PHP_EOL, $clean );
+        return $clean;
     }
 
     public function sanitize_cleanup_flag( $input ) {
-        return $input ? 1 : 0;
+        return (bool) $input;
+    }
+
+    private function get_block_lists() {
+        if ( null === self::$cached ) {
+            $domains = get_option( $this->opt_domains, array() );
+            $emails  = get_option( $this->opt_emails, array() );
+            self::$cached = array(
+                'domains' => array_map( 'strtolower', (array) $domains ),
+                'emails'  => array_map( 'strtolower', (array) $emails ),
+            );
+        }
+        return self::$cached;
     }
 
     private function is_blocked( $email ) {
-        $domains_opt = get_option( $this->opt_domains, '' );
-        $emails_opt  = get_option( $this->opt_emails, '' );
-        $domains     = array_filter( array_map( 'trim', explode( "\n", strtolower( $domains_opt ) ) ) );
-        $emails      = array_filter( array_map( 'trim', explode( "\n", strtolower( $emails_opt ) ) ) );
-
+        list( 'domains' => $domains, 'emails' => $emails ) = $this->get_block_lists();
         $email_lc = strtolower( $email );
+
         if ( in_array( $email_lc, $emails, true ) ) {
             return true;
         }
@@ -117,9 +131,9 @@ class Wilcosky_ERB {
 
     public function check_blocked_email( $errors, $sanitized_user_login, $user_email ) {
         if ( $this->is_blocked( $user_email ) ) {
-            wp_die(
-                esc_html__( 'Registration forbidden: email domain or address is blocked.', 'wilcosky-email-blocker' ),
-                esc_html__( 'Forbidden', 'wilcosky-email-blocker' ), array( 'response' => 403 )
+            $errors->add(
+                'erb_blocked_email',
+                __( 'Registration forbidden: email domain or address is blocked.', 'wilcosky-email-blocker' )
             );
         }
         return $errors;
@@ -129,7 +143,8 @@ class Wilcosky_ERB {
         if ( $this->is_blocked( $email ) ) {
             wp_die(
                 esc_html__( 'Registration forbidden: email domain or address is blocked.', 'wilcosky-email-blocker' ),
-                esc_html__( 'Forbidden', 'wilcosky-email-blocker' ), array( 'response' => 403 )
+                esc_html__( 'Forbidden', 'wilcosky-email-blocker' ),
+                array( 'response' => 403 )
             );
         }
         return $email;
@@ -137,9 +152,10 @@ class Wilcosky_ERB {
 
     public function rest_pre_insert_user_block( $prepared_user, $request ) {
         if ( isset( $prepared_user->user_email ) && $this->is_blocked( $prepared_user->user_email ) ) {
-            wp_die(
-                esc_html__( 'Registration forbidden via REST API: email domain or address is blocked.', 'wilcosky-email-blocker' ),
-                esc_html__( 'Forbidden', 'wilcosky-email-blocker' ), array( 'response' => 403 )
+            return new WP_Error(
+                'erb_blocked_email_rest',
+                __( 'Registration forbidden via REST API: email domain or address is blocked.', 'wilcosky-email-blocker' ),
+                array( 'status' => 403 )
             );
         }
         return $prepared_user;
@@ -162,6 +178,10 @@ class Wilcosky_ERB {
                 $test_result = __( 'This email would be allowed.', 'wilcosky-email-blocker' );
             }
         }
+
+        $blocked_domains = get_option( $this->opt_domains, array() );
+        $blocked_emails  = get_option( $this->opt_emails, array() );
+
         ?>
         <div class="wrap">
             <h1><?php esc_html_e( 'Email Registration Blocker Settings', 'wilcosky-email-blocker' ); ?></h1>
@@ -173,11 +193,13 @@ class Wilcosky_ERB {
                 <table class="form-table">
                     <tr valign="top">
                         <th scope="row"><?php esc_html_e( 'Blocked Domains', 'wilcosky-email-blocker' ); ?></th>
-                        <td><textarea name="<?php echo esc_attr( $this->opt_domains ); ?>" rows="5" cols="50" class="large-text code"><?php echo esc_textarea( get_option( $this->opt_domains, '' ) ); ?></textarea><p class="description"><?php esc_html_e( 'One domain per line (e.g., example.com)', 'wilcosky-email-blocker' ); ?></p></td>
+                        <td><textarea name="<?php echo esc_attr( $this->opt_domains ); ?>" rows="5" cols="50" class="large-text code"><?php echo esc_textarea( implode( "
+", (array) $blocked_domains ) ); ?></textarea><p class="description"><?php esc_html_e( 'One domain per line (e.g., example.com)', 'wilcosky-email-blocker' ); ?></p></td>
                     </tr>
                     <tr valign="top">
                         <th scope="row"><?php esc_html_e( 'Blocked Emails', 'wilcosky-email-blocker' ); ?></th>
-                        <td><textarea name="<?php echo esc_attr( $this->opt_emails ); ?>" rows="5" cols="50" class="large-text code"><?php echo esc_textarea( get_option( $this->opt_emails, '' ) ); ?></textarea><p class="description"><?php esc_html_e( 'One email per line (e.g., user@example.com)', 'wilcosky-email-blocker' ); ?></p></td>
+                        <td><textarea name="<?php echo esc_attr( $this->opt_emails ); ?>" rows="5" cols="50" class="large-text code"><?php echo esc_textarea( implode( "
+", (array) $blocked_emails ) ); ?></textarea><p class="description"><?php esc_html_e( 'One email per line (e.g., user@example.com)', 'wilcosky-email-blocker' ); ?></p></td>
                     </tr>
                     <tr valign="top">
                         <th scope="row"><?php esc_html_e( 'Clean up on Uninstall', 'wilcosky-email-blocker' ); ?></th>
@@ -201,11 +223,8 @@ class Wilcosky_ERB {
 
 new Wilcosky_ERB();
 
-/**
- * Uninstall handler: cleans up options if cleanup flag is set
- */
 function wilcosky_erb_uninstall() {
-    if ( get_option( 'wilcosky_erb_cleanup_on_uninstall', 0 ) ) {
+    if ( get_option( 'wilcosky_erb_cleanup_on_uninstall', false ) ) {
         delete_option( 'wilcosky_erb_blocked_domains' );
         delete_option( 'wilcosky_erb_blocked_emails' );
         delete_option( 'wilcosky_erb_cleanup_on_uninstall' );
