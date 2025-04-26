@@ -1,4 +1,4 @@
-**# WP Email Blocker
+# WP Email Blocker
 
 WP Email Blocker is a WordPress plugin designed to prevent users or bots from registering on your website using specific email domains or full email addresses. This plugin empowers administrators to maintain better control over who can register on their site by blocking unwanted email addresses.
 
