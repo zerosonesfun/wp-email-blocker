@@ -35,6 +35,8 @@ To block:
 - All users with the domain `example.com`, add `example.com` to the first blocklist.
 - A specific email address, add `spam@example.com` to the second blocklist.
 
+---
+
 ## Contributing 
 
 Feel free to contribute! I do want to keep this light though. It's not meant to turn into some kind of all-in-one security plugin or anything like that.
