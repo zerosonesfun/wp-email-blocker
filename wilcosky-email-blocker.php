@@ -271,6 +271,7 @@ function wilcosky_erb_uninstall() {
     if ( get_option( 'wilcosky_erb_cleanup_on_uninstall', false ) ) {
         delete_option( 'wilcosky_erb_blocked_domains' );
         delete_option( 'wilcosky_erb_blocked_emails' );
+        delete_option( 'wilcosky_erb_max_log_limit' );
         delete_option( 'wilcosky_erb_cleanup_on_uninstall' );
     }
 }
