@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Wilcosky Email Registration Blocker
  * Description: Block specific email domains and full email addresses from registering on your WordPress site—mandatory across all entry points including REST API and custom forms.
- * Version: 1.3
+ * Version: 1.3.1
  * Author: Billy Wilcosky
  * Text Domain: wilcosky-email-blocker
  * Domain Path: /languages
@@ -16,15 +16,23 @@ class Wilcosky_ERB {
     private $opt_domains        = 'wilcosky_erb_blocked_domains';
     private $opt_emails         = 'wilcosky_erb_blocked_emails';
     private $opt_cleanup_uninst = 'wilcosky_erb_cleanup_on_uninstall';
+    private $opt_log_limit      = 'wilcosky_erb_max_log_limit';
     private static $cached = null;
 
     public function __construct() {
+        // Load the text domain dynamically
+        add_action( 'plugins_loaded', array( $this, 'load_text_domain' ) );
+
         add_action( 'admin_menu',    array( $this, 'add_settings_page' ) );
         add_action( 'admin_init',    array( $this, 'register_settings' ) );
 
         add_filter( 'registration_errors',  array( $this, 'check_blocked_email' ), 10, 3 );
         add_filter( 'pre_user_email',       array( $this, 'pre_user_email_block' ), 10, 1 );
         add_filter( 'rest_pre_insert_user', array( $this, 'rest_pre_insert_user_block' ), 10, 2 );
+    }
+
+    public function load_text_domain() {
+        load_plugin_textdomain( 'wilcosky-email-blocker', false, dirname( plugin_basename( __FILE__ ) ) . '/languages/' );
     }
 
     public function add_settings_page() {
@@ -42,9 +50,9 @@ class Wilcosky_ERB {
             'wilcosky_erb_settings',
             $this->opt_domains,
             array(
-                'type'              => 'array',
+                'type'              => 'string', // Changed to string for serialized data
                 'sanitize_callback' => array( $this, 'sanitize_domains' ),
-                'default'           => array()
+                'default'           => serialize( array() ) // Serialized default
             )
         );
 
@@ -52,19 +60,19 @@ class Wilcosky_ERB {
             'wilcosky_erb_settings',
             $this->opt_emails,
             array(
-                'type'              => 'array',
+                'type'              => 'string', // Changed to string for serialized data
                 'sanitize_callback' => array( $this, 'sanitize_emails' ),
-                'default'           => array()
+                'default'           => serialize( array() ) // Serialized default
             )
         );
 
         register_setting(
             'wilcosky_erb_settings',
-            'wilcosky_erb_max_log_limit',
+            $this->opt_log_limit,
             array(
-               'type'              => 'boolean',
-               'sanitize_callback' => 'rest_sanitize_boolean',
-               'default'           => false,
+                'type'              => 'boolean',
+                'sanitize_callback' => 'rest_sanitize_boolean',
+                'default'           => false,
             )
         );
 
@@ -80,6 +88,8 @@ class Wilcosky_ERB {
     }
 
     public function sanitize_domains( $input ) {
+        // Deserialize and sanitize the input
+        $input = maybe_unserialize( $input );
         if ( is_string( $input ) ) {
             $input = preg_split( '/\r?\n/', $input );
         }
@@ -91,10 +101,12 @@ class Wilcosky_ERB {
             }
             $clean[] = sanitize_text_field( strtolower( $d ) );
         }
-        return $clean;
+        return serialize( $clean ); // Serialize the output
     }
 
     public function sanitize_emails( $input ) {
+        // Deserialize and sanitize the input
+        $input = maybe_unserialize( $input );
         if ( is_string( $input ) ) {
             $input = preg_split( '/\r?\n/', $input );
         }
@@ -106,7 +118,7 @@ class Wilcosky_ERB {
             }
             $clean[] = sanitize_email( strtolower( $e ) );
         }
-        return $clean;
+        return serialize( $clean ); // Serialize the output
     }
 
     public function sanitize_cleanup_flag( $input ) {
@@ -115,8 +127,8 @@ class Wilcosky_ERB {
 
     private function get_block_lists() {
         if ( null === self::$cached ) {
-            $domains = get_option( $this->opt_domains, array() );
-            $emails  = get_option( $this->opt_emails, array() );
+            $domains = maybe_unserialize( get_option( $this->opt_domains, serialize( array() ) ) );
+            $emails  = maybe_unserialize( get_option( $this->opt_emails, serialize( array() ) ) );
             self::$cached = array(
                 'domains' => array_map( 'strtolower', (array) $domains ),
                 'emails'  => array_map( 'strtolower', (array) $emails ),
@@ -130,13 +142,25 @@ class Wilcosky_ERB {
         $email_lc = strtolower( $email );
 
         if ( in_array( $email_lc, $emails, true ) ) {
+            $this->log_blocked_email( $email_lc ); // Log blocked email
             return true;
         }
         $parts = explode( '@', $email_lc );
         if ( count( $parts ) === 2 && in_array( $parts[1], $domains, true ) ) {
+            $this->log_blocked_email( $email_lc ); // Log blocked email
             return true;
         }
         return false;
+    }
+
+    private function log_blocked_email( $email ) {
+        // Log the blocked email for admin review
+        $log = get_option( 'wilcosky_erb_block_log', array() );
+        $log[] = array(
+            'email' => $email,
+            'time'  => current_time( 'mysql' ),
+        );
+        update_option( 'wilcosky_erb_block_log', $log );
     }
 
     public function check_blocked_email( $errors, $sanitized_user_login, $user_email ) {
@@ -162,15 +186,20 @@ class Wilcosky_ERB {
 
     public function rest_pre_insert_user_block( $prepared_user, $request ) {
         if ( isset( $prepared_user->user_email ) && $this->is_blocked( $prepared_user->user_email ) ) {
+            $blocked_domain = explode( '@', $prepared_user->user_email )[1];
             return new WP_Error(
                 'erb_blocked_email_rest',
-                __( 'Registration forbidden via REST API: email domain or address is blocked.', 'wilcosky-email-blocker' ),
+                sprintf(
+                    __( 'Registration forbidden via REST API: email domain "%s" or address "%s" is blocked.', 'wilcosky-email-blocker' ),
+                    $blocked_domain,
+                    $prepared_user->user_email
+                ),
                 array( 'status' => 403 )
             );
         }
         return $prepared_user;
     }
-
+    
     public function settings_page_html() {
     if ( ! current_user_can( 'manage_options' ) ) {
         wp_die( esc_html__( 'Forbidden', 'wilcosky-email-blocker' ) );
