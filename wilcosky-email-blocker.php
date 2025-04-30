@@ -105,8 +105,8 @@ class Wilcosky_ERB {
     }
 
     public function sanitize_cleanup_flag( $input ) {
-        return (bool) $input;
-    }
+    return filter_var( $input, FILTER_VALIDATE_BOOLEAN );
+}
 
     private function get_block_lists() {
         if ( null === self::$cached ) {
