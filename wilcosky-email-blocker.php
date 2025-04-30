@@ -267,6 +267,7 @@ class Wilcosky_ERB {
                         <th><?php esc_html_e( 'Clean up on Uninstall', 'wilcosky-email-blocker' ); ?></th>
                         <td>
                             <label>
+                                <input type="hidden" name="<?php echo esc_attr( $this->opt_cleanup_uninst ); ?>" value="0" />
                                 <input type="checkbox" name="<?php echo esc_attr( $this->opt_cleanup_uninst ); ?>" value="1" <?php checked( true, get_option( $this->opt_cleanup_uninst, false ) ); ?> />
                                 <?php esc_html_e( 'Yes', 'wilcosky-email-blocker' ); ?>
                             </label>
