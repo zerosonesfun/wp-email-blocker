@@ -204,6 +204,21 @@ class Wilcosky_ERB {
         );
     }
 
+    public function handle_clear_logs() {
+    if ( isset( $_POST['action'] ) && $_POST['action'] === 'clear_logs' ) {
+        check_admin_referer( 'wilcosky_erb_clear_logs' );
+
+        // Clear the logs
+        update_option( 'wilcosky_erb_block_log', [] );
+
+        // Add an admin notice for feedback
+        add_action( 'admin_notices', function() {
+            echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Logs cleared successfully.', 'wilcosky-email-blocker' ) . '</p></div>';
+        } );
+    }
+}
+    add_action( 'admin_init', [ $this, 'handle_clear_logs' ] );
+
     public function settings_page_html() {
         if ( ! current_user_can( 'manage_options' ) ) {
             wp_die( esc_html__( 'Forbidden', 'wilcosky-email-blocker' ) );
@@ -308,6 +323,15 @@ class Wilcosky_ERB {
                 <?php endforeach; ?>
             </ul>
         </div>
+
+          <hr />
+
+          <h2><?php esc_html_e( 'Manage Logs', 'wilcosky-email-blocker' ); ?></h2>
+          <form method="post">
+                             <?php wp_nonce_field( 'wilcosky_erb_clear_logs' ); ?>
+                             <input type="hidden" name="action" value="clear_logs" />
+                             <?php submit_button( __( 'Clear Logs', 'wilcosky-email-blocker' ), 'delete', 'clear_logs', false ); ?>
+          </form>
         <?php
     }
 }
