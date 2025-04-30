@@ -65,14 +65,13 @@ class Wilcosky_ERB {
             ]
         );
         register_setting(
-            'wilcosky_erb_settings',
-            $this->opt_cleanup_uninst,
-            [
-                'type'              => 'boolean',
-                'sanitize_callback' => [ $this, 'sanitize_cleanup_flag' ],
-                'default'           => false,
-            ]
-        );
+    'wilcosky_erb_settings',
+    $this->opt_cleanup_uninst,
+    [
+        'type' => 'string',
+        'default' => '0',
+    ]
+);
     }
 
     public function sanitize_domains( $input ) {
@@ -268,7 +267,7 @@ class Wilcosky_ERB {
                         <td>
                             <label>
                                 <input type="hidden" name="<?php echo esc_attr( $this->opt_cleanup_uninst ); ?>" value="0" />
-                                <input type="checkbox" name="<?php echo esc_attr( $this->opt_cleanup_uninst ); ?>" value="1" <?php checked( true, get_option( $this->opt_cleanup_uninst, false ) ); ?> />
+                                <input type="checkbox" name="<?php echo esc_attr( $this->opt_cleanup_uninst ); ?>" value="1" <?php checked( '1', get_option( $this->opt_cleanup_uninst, '0' ) ); ?> />
                                 <?php esc_html_e( 'Yes', 'wilcosky-email-blocker' ); ?>
                             </label>
                         </td>
