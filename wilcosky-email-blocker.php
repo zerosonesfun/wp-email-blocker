@@ -302,18 +302,21 @@ class Wilcosky_ERB {
                     </tr>
                 </table>
                 <?php submit_button(); ?>
-            </form>
+            </form><br>
+
+            <hr />
 
             <h2><?php esc_html_e( 'Test an Email', 'wilcosky-email-blocker' ); ?></h2>
             <form method="post">
                 <?php wp_nonce_field( 'wilcosky_erb_settings' ); ?>
                 <input type="email" name="wilcosky_erb_test_email" placeholder="<?php esc_attr_e( 'Enter an email to test...', 'wilcosky-email-blocker' ); ?>" class="regular-text" />
                 <?php submit_button( __( 'Test Email', 'wilcosky-email-blocker' ), 'primary', 'test_email', false ); ?>
-            </form>
+            </form><br>
 
             <hr />
 
-            <h2><?php esc_html_e( 'Blocked Emails Log Summary', 'wilcosky-email-blocker' ); ?></h2>
+            <h2><?php esc_html_e( 'Log', 'wilcosky-email-blocker' ); ?></h2>
+            <p>The number of times the same email has been blocked is in parentheses.</p>
             <ul>
                 <?php foreach ( $multi_blocked as $email => $count ) : ?>
                     <li><?php echo esc_html( $email ); ?> (<?php echo esc_html( $count ); ?>)</li>
@@ -327,6 +330,7 @@ class Wilcosky_ERB {
           <hr />
 
           <h2><?php esc_html_e( 'Manage Logs', 'wilcosky-email-blocker' ); ?></h2>
+          <p style="color:red">Careful! With one click, your log is gone.</p>
           <form method="post">
                              <?php wp_nonce_field( 'wilcosky_erb_clear_logs' ); ?>
                              <input type="hidden" name="action" value="clear_logs" />
