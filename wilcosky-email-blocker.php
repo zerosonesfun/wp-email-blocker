@@ -23,6 +23,7 @@ class Wilcosky_ERB {
         add_action( 'plugins_loaded',            [ $this, 'load_text_domain' ] );
         add_action( 'admin_menu',                [ $this, 'add_settings_page' ] );
         add_action( 'admin_init',                [ $this, 'register_settings' ] );
+        add_action( 'admin_init',                [ $this, 'handle_clear_logs' ] );
         add_filter( 'registration_errors',       [ $this, 'check_blocked_email' ], 10, 3 );
         add_filter( 'pre_user_email',            [ $this, 'pre_user_email_block' ], 10, 1 );
         add_filter( 'rest_pre_insert_user',      [ $this, 'rest_pre_insert_user_block' ], 10, 2 );
@@ -217,7 +218,6 @@ class Wilcosky_ERB {
         } );
     }
 }
-    add_action( 'admin_init', [ $this, 'handle_clear_logs' ] );
 
     public function settings_page_html() {
         if ( ! current_user_can( 'manage_options' ) ) {
