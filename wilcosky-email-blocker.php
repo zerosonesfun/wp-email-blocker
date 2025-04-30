@@ -120,23 +120,27 @@ class Wilcosky_ERB {
         return self::$cached;
     }
 
-    private function is_blocked( $email ) {
-        $lists    = $this->get_block_lists();
-        $email_lc = strtolower( $email );
+    private function is_blocked( $email, $log = true ) {
+    $lists    = $this->get_block_lists();
+    $email_lc = strtolower( $email );
 
-        if ( in_array( $email_lc, $lists['emails'], true ) ) {
+    if ( in_array( $email_lc, $lists['emails'], true ) ) {
+        if ( $log ) {
             $this->log_blocked_email( $email_lc );
-            return true;
         }
-
-        $parts = explode( '@', $email_lc );
-        if ( count( $parts ) === 2 && in_array( $parts[1], $lists['domains'], true ) ) {
-            $this->log_blocked_email( $email_lc );
-            return true;
-        }
-
-        return false;
+        return true;
     }
+
+    $parts = explode( '@', $email_lc );
+    if ( count( $parts ) === 2 && in_array( $parts[1], $lists['domains'], true ) ) {
+        if ( $log ) {
+            $this->log_blocked_email( $email_lc );
+        }
+        return true;
+    }
+
+    return false;
+}
 
     private function log_blocked_email( $email ) {
     $log = (array) get_option( 'wilcosky_erb_block_log', [] );
@@ -208,16 +212,16 @@ class Wilcosky_ERB {
         // Handle test-email submission
         $test_result = null;
         if ( isset( $_POST['wilcosky_erb_test_email'] ) ) {
-            check_admin_referer( 'wilcosky_erb_settings' );
-            $test_email = sanitize_email( wp_unslash( $_POST['wilcosky_erb_test_email'] ) );
-            if ( empty( $test_email ) || ! is_email( $test_email ) ) {
-                $test_result = __( 'Invalid email address.', 'wilcosky-email-blocker' );
-            } elseif ( $this->is_blocked( $test_email ) ) {
-                $test_result = __( 'This email WOULD be blocked.', 'wilcosky-email-blocker' );
-            } else {
-                $test_result = __( 'This email would be allowed.', 'wilcosky-email-blocker' );
-            }
-        }
+    check_admin_referer( 'wilcosky_erb_settings' );
+    $test_email = sanitize_email( wp_unslash( $_POST['wilcosky_erb_test_email'] ) );
+    if ( empty( $test_email ) || ! is_email( $test_email ) ) {
+        $test_result = __( 'Invalid email address.', 'wilcosky-email-blocker' );
+    } elseif ( $this->is_blocked( $test_email, false ) ) { // Pass `false` to skip logging
+        $test_result = __( 'This email WOULD be blocked.', 'wilcosky-email-blocker' );
+    } else {
+        $test_result = __( 'This email would be allowed.', 'wilcosky-email-blocker' );
+    }
+}
 
         $blocked_domains       = get_option( $this->opt_domains, [] );
         $blocked_emails        = get_option( $this->opt_emails, [] );
