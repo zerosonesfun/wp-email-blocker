@@ -329,7 +329,7 @@ class Wilcosky_ERB {
 
           <hr />
 
-          <h2><?php esc_html_e( 'Manage Logs', 'wilcosky-email-blocker' ); ?></h2>
+          <h2><?php esc_html_e( 'Manage Log', 'wilcosky-email-blocker' ); ?></h2>
           <p style="color:red">Careful! With one click, your log is gone.</p>
           <form method="post">
                              <?php wp_nonce_field( 'wilcosky_erb_clear_logs' ); ?>
