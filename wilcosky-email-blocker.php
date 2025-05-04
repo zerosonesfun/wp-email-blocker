@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Wilcosky Email Registration Blocker
  * Description: Block specific email domains and full email addresses from registering on your WordPress site—mandatory across all entry points including REST API and custom forms.
- * Version: 1.3.4
+ * Version: 1.3.5
  * Author: Billy Wilcosky
  * Text Domain: wilcosky-email-blocker
  * Domain Path: /languages
@@ -140,23 +140,36 @@ class Wilcosky_ERB {
 }
 
     private function get_block_lists() {
-        if ( null === self::$cached ) {
-            $domains = (array) get_option( $this->opt_domains, [] );
-            $emails  = (array) get_option( $this->opt_emails, [] );
-            $predefined_enabled = get_option( $this->opt_enable_predefined, false );
+    $cache_key = 'wilcosky_erb_block_lists';
+    $cached = get_transient($cache_key);
 
-            // Include predefined domains if enabled
-            if ( $predefined_enabled ) {
-                $domains = array_merge( $domains, $this->predefined_domains );
-            }
-
-            self::$cached = [
-                'domains' => array_map( 'strtolower', $domains ),
-                'emails'  => array_map( 'strtolower', $emails ),
-            ];
-        }
-        return self::$cached;
+    if ($cached !== false) {
+        return $cached;
     }
+
+    $domains = (array) get_option($this->opt_domains, []);
+    $emails = (array) get_option($this->opt_emails, []);
+    $predefined_enabled = get_option($this->opt_enable_predefined, false);
+
+    if ($predefined_enabled) {
+        $domains = array_merge($domains, $this->predefined_domains);
+    }
+
+    $result = [
+        'domains' => array_map('strtolower', $domains),
+        'emails'  => array_map('strtolower', $emails),
+    ];
+
+    set_transient($cache_key, $result, DAY_IN_SECONDS); // Cache for 1 day
+    return $result;
+}
+    function wilcosky_clear_block_cache() {
+    delete_transient('wilcosky_erb_block_lists');
+}
+    // Hook into settings update to clear the cache
+    add_action('update_option_wilcosky_erb_blocked_domains', 'wilcosky_clear_block_cache');
+    add_action('update_option_wilcosky_erb_enable_predefined_domains', 'wilcosky_clear_block_cache');
+    add_action('update_option_wilcosky_erb_blocked_emails', 'wilcosky_clear_block_cache');
 
     private function is_blocked( $email, $log = true ) {
     $lists    = $this->get_block_lists();
