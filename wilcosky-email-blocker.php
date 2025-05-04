@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Wilcosky Email Registration Blocker
  * Description: Block specific email domains and full email addresses from registering on your WordPress site—mandatory across all entry points including REST API and custom forms.
- * Version: 1.3.3
+ * Version: 1.3.4
  * Author: Billy Wilcosky
  * Text Domain: wilcosky-email-blocker
  * Domain Path: /languages
@@ -17,7 +17,29 @@ class Wilcosky_ERB {
     private $opt_emails         = 'wilcosky_erb_blocked_emails';
     private $opt_cleanup_uninst = 'wilcosky_erb_cleanup_on_uninstall';
     private $opt_log_limit      = 'wilcosky_erb_max_log_limit';
+    private $opt_enable_predefined = 'wilcosky_erb_enable_predefined_domains';
     private static $cached      = null;
+
+    private $predefined_domains = [
+        '10minutemail.com', '1secmail.com', 'mailinator.com', 'trashmail.com', 'temp-mail.org',
+        'yopmail.com', 'maildrop.cc', 'throwawaymail.com', 'spamgourmet.com', 'mailnesia.com',
+        'easytrashmail.com', 'mintemail.com', 'dispostable.com', 'fakemailgenerator.com',
+        'fakeinbox.com', 'spam4.me', 'nomail.ch', 'mailcatch.com', 'shreddemail.com',
+        'mail-temporaire.fr', 'tempail.com', 'guerrillamail.com', 'sharklasers.com',
+        'guerrillamailblock.com', 'privy-mail.net', 'temp-mail.io', 'minuteinbox.com',
+        'getnada.com', 'nada.email', 'spamex.com', 'mytemp.email', '33mail.com', 'mail6.io',
+        'temp-mail.pro', 'moakt.com', 'anonbox.net', 'mailpoof.com', 'tempinbox.xyz',
+        'yopmail.fr', 'mailwatch.cc', 'inboxbear.com', 'guerrillamail.de', 'yopmail.net',
+        'mintemail.io', 'mail.tm', 'mail7.io', 'gmial.com', 'emailondeck.com', 'getairmail.com',
+        'mail.ru', 'yandex.ru', 'inbox.ru', 'rambler.ru', 'bk.ru', 'list.ru', 'bigmir.net',
+        'ukr.net', 'abv.bg', 'mail.kz', 'hanmail.net', 'nate.com', 'voxmail.hu', 'centrum.cz',
+        'wp.pl', 'o2.pl', 'interia.pl', 'seznam.cz', 't-online.de', 'gmx.de', 'web.de',
+        'freenet.de', 'arcor.de', 'post.cz', 'slovak.post.sk', 'mail.ee', 'mail.bg',
+        'netcourrier.com', 'laposte.net', 'ziggo.nl', 'planet.nl', 'freemail.hu', 'wp.eu',
+        'bluewin.ch', 'hispeed.ch', 'tele2.nl', 'wanadoo.es', 'terra.es', 'iol.pt', 'sapo.pt',
+        'globo.com', 'uol.com.br', 'bol.com.br', 'terra.com.br', 'yahoo.co.in', 'mail2world.com',
+        'mailcatch.com.au', 'bigpond.com', 'optusnet.com.au', 'virginmedia.com'
+    ];
 
     public function __construct() {
         add_action( 'plugins_loaded',            [ $this, 'load_text_domain' ] );
@@ -63,6 +85,14 @@ class Wilcosky_ERB {
                 'type'              => 'boolean',
                 'sanitize_callback' => 'rest_sanitize_boolean',
                 'default'           => false,
+            ]
+        );
+        register_setting(
+            'wilcosky_erb_settings',
+            $this->opt_enable_predefined,
+            [
+                'type'    => 'boolean',
+                'default' => false,
             ]
         );
         register_setting(
@@ -113,6 +143,13 @@ class Wilcosky_ERB {
         if ( null === self::$cached ) {
             $domains = (array) get_option( $this->opt_domains, [] );
             $emails  = (array) get_option( $this->opt_emails, [] );
+            $predefined_enabled = get_option( $this->opt_enable_predefined, false );
+
+            // Include predefined domains if enabled
+            if ( $predefined_enabled ) {
+                $domains = array_merge( $domains, $this->predefined_domains );
+            }
+
             self::$cached = [
                 'domains' => array_map( 'strtolower', $domains ),
                 'emails'  => array_map( 'strtolower', $emails ),
@@ -282,6 +319,16 @@ class Wilcosky_ERB {
                         </td>
                     </tr>
                     <tr>
+                        <th><?php printf(wp_kses(sprintf(__('Enable Predefined <a href="%s" target="_blank">Domain List</a>', 'wilcosky-email-blocker'), esc_url('https://github.com/zerosonesfun/wp-email-blocker/wiki/Known-Spam-Email-Domains')), ['a' => ['href' => [], 'target' => []]])); ?>
+</th>
+                        <td>
+                            <label>
+                                <input type="checkbox" name="<?php echo esc_attr( $this->opt_enable_predefined ); ?>" value="1" <?php checked( true, $predefined_enabled ); ?> />
+                                <?php esc_html_e( 'Enable', 'wilcosky-email-blocker' ); ?>
+                           </label>
+                        </td>
+                    </tr>
+                    <tr>
                         <th><?php esc_html_e( 'Clean up on Uninstall', 'wilcosky-email-blocker' ); ?></th>
                         <td>
                             <label>
@@ -352,6 +399,7 @@ function wilcosky_erb_uninstall() {
         delete_option( 'wilcosky_erb_max_log_limit' );
         delete_option( 'wilcosky_erb_cleanup_on_uninstall' );
         delete_option( 'wilcosky_erb_block_log' );
+        delete_option( 'wilcosky_erb_enable_predefined_domains' ); 
     }
 }
 register_uninstall_hook( __FILE__, 'wilcosky_erb_uninstall' );
