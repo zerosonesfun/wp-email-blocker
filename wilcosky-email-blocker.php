@@ -141,10 +141,6 @@ class Wilcosky_ERB {
         return array_values( array_unique( $clean ) );
     }
 
-    public function sanitize_cleanup_flag( $input ) {
-    return filter_var( $input, FILTER_VALIDATE_BOOLEAN );
-}
-
     private function get_block_lists() {
     $cache_key = 'wilcosky_erb_block_lists';
     $cached = get_transient($cache_key);
