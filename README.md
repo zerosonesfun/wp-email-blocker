@@ -8,6 +8,8 @@ WP Email Blocker is a WordPress plugin designed to prevent users or bots from re
 
 - Block specific email domains (e.g., `example.com`).
 - Block specific email addresses (e.g., `spam@example.com`).
+- Optionally include a predefined list of 100 common spam email domains. (See repository wiki for the list)
+- A simple log shows you it's working and which emails are being used repeatedly.
 - Easy-to-use interface to manage blocked emails.
 - Lightweight and efficient.
 
