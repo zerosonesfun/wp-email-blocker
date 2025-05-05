@@ -336,6 +336,7 @@ class Wilcosky_ERB {
 </th>
                         <td>
                             <label>
+                                <input type="hidden" name="<?php echo esc_attr( $this->opt_enable_predefined ); ?>" value="0" />
                                 <input type="checkbox" name="<?php echo esc_attr( $this->opt_enable_predefined ); ?>" value="1" <?php checked( true, $predefined_enabled ); ?> />
                                 <?php esc_html_e( 'Enable', 'wilcosky-email-blocker' ); ?>
                            </label>
@@ -355,6 +356,7 @@ class Wilcosky_ERB {
                         <th><?php esc_html_e( 'Limit Log to 100 Emails', 'wilcosky-email-blocker' ); ?></th>
                         <td>
                             <label>
+                                <input type="hidden" name="<?php echo esc_attr( $this->opt_log_limit ); ?>" value="0" />
                                 <input type="checkbox" name="<?php echo esc_attr( $this->opt_log_limit ); ?>" value="1" <?php checked( true, $max_log_limit_enabled ); ?> />
                                 <?php esc_html_e( 'Enable', 'wilcosky-email-blocker' ); ?>
                             </label>
