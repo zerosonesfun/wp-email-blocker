@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Wilcosky Email Registration Blocker
  * Description: Block specific email domains and full email addresses from registering on your WordPress site—mandatory across all entry points including REST API and custom forms.
- * Version: 1.3.9
+ * Version: 1.3.11
  * Author: Billy Wilcosky
  * Text Domain: wilcosky-email-blocker
  * Domain Path: /languages
@@ -103,10 +103,12 @@ class Wilcosky_ERB {
             'wilcosky_erb_settings',
             $this->opt_cleanup_uninst,
             [
-                'type' => 'string',
-                'default' => '0',
+                'type'              => 'boolean',
+                'sanitize_callback' => 'rest_sanitize_boolean',
+                'default'           => false,
             ]
         );
+
     }
 
     public function sanitize_domains( $input ) {
@@ -153,7 +155,7 @@ class Wilcosky_ERB {
 
     $domains = (array) get_option($this->opt_domains, []);
     $emails = (array) get_option($this->opt_emails, []);
-    $predefined_enabled = get_option($this->opt_enable_predefined, false);
+    $predefined_enabled = get_option( $this->opt_enable_predefined, false );
 
     if ($predefined_enabled) {
         $domains = array_merge($domains, $this->predefined_domains);
@@ -291,6 +293,8 @@ class Wilcosky_ERB {
         $blocked_domains       = get_option( $this->opt_domains, [] );
         $blocked_emails        = get_option( $this->opt_emails, [] );
         $max_log_limit_enabled = get_option( $this->opt_log_limit, false );
+        $predefined_enabled    = get_option( $this->opt_enable_predefined, false );
+        $cleanup_on_uninstall = get_option( $this->opt_cleanup_uninst, false );
 
         // Build log-summary
         $logs = (array) get_option( 'wilcosky_erb_block_log', [] );
@@ -347,7 +351,7 @@ class Wilcosky_ERB {
                         <td>
                             <label>
                                 <input type="hidden" name="<?php echo esc_attr( $this->opt_cleanup_uninst ); ?>" value="0" />
-                                <input type="checkbox" name="<?php echo esc_attr( $this->opt_cleanup_uninst ); ?>" value="1" <?php checked( '1', get_option( $this->opt_cleanup_uninst, '0' ) ); ?> />
+                                <input type="checkbox" name="<?php echo esc_attr( $this->opt_cleanup_uninst ); ?>" value="1" <?php checked( true, $cleanup_on_uninstall ); ?> />
                                 <?php esc_html_e( 'Yes', 'wilcosky-email-blocker' ); ?>
                             </label>
                         </td>
