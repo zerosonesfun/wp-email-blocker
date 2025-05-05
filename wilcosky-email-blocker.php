@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Wilcosky Email Registration Blocker
  * Description: Block specific email domains and full email addresses from registering on your WordPress site—mandatory across all entry points including REST API and custom forms.
- * Version: 1.3.8
+ * Version: 1.3.9
  * Author: Billy Wilcosky
  * Text Domain: wilcosky-email-blocker
  * Domain Path: /languages
