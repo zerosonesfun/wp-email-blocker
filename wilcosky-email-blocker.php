@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Wilcosky Email Registration Blocker
  * Description: Block specific email domains and full email addresses from registering on your WordPress site—mandatory across all entry points including REST API and custom forms.
- * Version: 1.3.5
+ * Version: 1.3.6
  * Author: Billy Wilcosky
  * Text Domain: wilcosky-email-blocker
  * Domain Path: /languages
@@ -46,6 +46,9 @@ class Wilcosky_ERB {
         add_action( 'admin_menu',                [ $this, 'add_settings_page' ] );
         add_action( 'admin_init',                [ $this, 'register_settings' ] );
         add_action( 'admin_init',                [ $this, 'handle_clear_logs' ] );
+        add_action( 'update_option_wilcosky_erb_blocked_domains', [ $this, 'wilcosky_clear_block_cache' ] );
+        add_action( 'update_option_wilcosky_erb_enable_predefined_domains', [ $this, 'wilcosky_clear_block_cache' ] );
+        add_action( 'update_option_wilcosky_erb_blocked_emails', [ $this, 'wilcosky_clear_block_cache' ] );
         add_filter( 'registration_errors',       [ $this, 'check_blocked_email' ], 10, 3 );
         add_filter( 'pre_user_email',            [ $this, 'pre_user_email_block' ], 10, 1 );
         add_filter( 'rest_pre_insert_user',      [ $this, 'rest_pre_insert_user_block' ], 10, 2 );
@@ -163,13 +166,9 @@ class Wilcosky_ERB {
     set_transient($cache_key, $result, DAY_IN_SECONDS); // Cache for 1 day
     return $result;
 }
-    function wilcosky_clear_block_cache() {
+    public function wilcosky_clear_block_cache() {
     delete_transient('wilcosky_erb_block_lists');
 }
-    // Hook into settings update to clear the cache
-    add_action('update_option_wilcosky_erb_blocked_domains', 'wilcosky_clear_block_cache');
-    add_action('update_option_wilcosky_erb_enable_predefined_domains', 'wilcosky_clear_block_cache');
-    add_action('update_option_wilcosky_erb_blocked_emails', 'wilcosky_clear_block_cache');
 
     private function is_blocked( $email, $log = true ) {
     $lists    = $this->get_block_lists();
