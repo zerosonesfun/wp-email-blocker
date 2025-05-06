@@ -1,0 +1,33 @@
+.pill {
+  display: inline-flex;
+  align-items: center;
+  background-color: #f1f1f1;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  padding: 2px 6px;
+  margin: 2px;
+  font-size: 13px;
+  color: #555;
+}
+
+.pill-close {
+  background: none;
+  border: none;
+  color: #a00;
+  font-weight: bold;
+  margin-left: 4px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+}
+
+.pill-close:focus {
+  outline: none;
+}
+
+/* Container to ensure pills wrap nicely */
+.pill-container {
+  display: flex;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
