@@ -2,6 +2,8 @@
 
 WP (Wilcosky) Email Blocker is a WordPress plugin designed to prevent users or bots from registering on your website using specific email domains or full email addresses.
 
+![](https://raw.githubusercontent.com/zerosonesfun/wp-email-blocker/refs/heads/main/IMG_1282.jpeg)
+
 ---
 
 ## Features
