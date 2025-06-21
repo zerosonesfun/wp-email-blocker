@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Wilcosky Email Registration Blocker
  * Description: Block specific email domains and full email addresses from registering on your WordPress site—mandatory across all entry points including REST API and custom forms.
- * Version: 1.4.2
+ * Version: 1.4.3
  * Author: Billy Wilcosky
  * Text Domain: wilcosky-email-blocker
  * Domain Path: /languages
@@ -18,6 +18,7 @@ class Wilcosky_ERB {
     private $opt_cleanup_uninst      = 'wilcosky_erb_cleanup_on_uninstall';
     private $opt_log_limit           = 'wilcosky_erb_max_log_limit';
     private $opt_enable_predefined   = 'wilcosky_erb_enable_predefined_domains';
+    private $opt_max_dots            = 'wilcosky_erb_max_dots_local_part';
     private static $cached            = null;
 
     private $predefined_domains = [
@@ -134,6 +135,15 @@ class Wilcosky_ERB {
                 'default'           => false,
             ]
         );
+        register_setting(
+            'wilcosky_erb_settings',
+            $this->opt_max_dots,
+            [
+                'type'              => 'integer',
+                'sanitize_callback' => 'absint',
+                'default'           => 2,
+            ]
+        );
     }
 
     public function sanitize_domains($input) {
@@ -232,11 +242,42 @@ class Wilcosky_ERB {
         update_option('wilcosky_erb_block_log', $log);
     }
 
+    /**
+     * Get the max dots setting, fallback to 2 if not set.
+     */
+    private function get_max_dots_setting() {
+        $value = get_option($this->opt_max_dots, 2);
+        if (!is_numeric($value) || $value < 0) {
+            return 2;
+        }
+        return (int) $value;
+    }
+
+    /**
+     * Check if email has more than allowed dots in local part.
+     */
+    private function has_too_many_dots($email) {
+        $at_pos = strpos($email, '@');
+        if ($at_pos === false) {
+            return false;
+        }
+        $local = substr($email, 0, $at_pos);
+        $dot_count = substr_count($local, '.');
+        return $dot_count > $this->get_max_dots_setting();
+    }
+
     public function check_blocked_email($errors, $sanitized_user_login, $user_email) {
         if ($this->is_blocked($user_email)) {
             $errors->add(
                 'erb_blocked_email',
                 __('Registration forbidden: email domain or address is blocked.', 'wilcosky-email-blocker')
+            );
+        }
+        // Block if too many dots in local part
+        if ($this->has_too_many_dots($user_email)) {
+            $errors->add(
+                'erb_email_too_many_dots',
+                sprintf(__('Registration forbidden: email address has more than %d dots before the @.', 'wilcosky-email-blocker'), $this->get_max_dots_setting())
             );
         }
         return $errors;
@@ -249,6 +290,11 @@ class Wilcosky_ERB {
                 esc_html__('Forbidden', 'wilcosky-email-blocker'),
                 ['response' => 403]
             );
+        }
+        if ($this->has_too_many_dots($email)) {
+            wp_die(
+                sprintf(esc_html__('Registration forbidden: email address has more than %d dots before the @.', 'wilcosky-email-blocker'), $this->get_max_dots_setting()),
+                esc_html__('Forbidden', 'wilcosky-email-blocker'), ['response' => 403]);
         }
         return $email;
     }
@@ -265,6 +311,12 @@ class Wilcosky_ERB {
                 ),
                 ['status' => 403]
             );
+        }
+        if (! empty($prepared_user->user_email) && $this->has_too_many_dots($prepared_user->user_email)) {
+            return new WP_Error(
+                'erb_email_too_many_dots_rest',
+                sprintf(__('Registration forbidden via REST API: email address has more than %d dots before the @.', 'wilcosky-email-blocker'), $this->get_max_dots_setting()),
+                ['status' => 403]);
         }
         return $prepared_user;
     }
@@ -304,6 +356,8 @@ class Wilcosky_ERB {
                 $test_result = __('Invalid email address.', 'wilcosky-email-blocker');
             } elseif ($this->is_blocked($test_email, false)) {
                 $test_result = __('This email WOULD be blocked.', 'wilcosky-email-blocker');
+            } elseif ($this->has_too_many_dots($test_email)) {
+                $test_result = sprintf(__('This email WOULD be blocked: more than %d dots before the @.', 'wilcosky-email-blocker'), $this->get_max_dots_setting());
             } else {
                 $test_result = __('This email would be allowed.', 'wilcosky-email-blocker');
             }
@@ -314,6 +368,7 @@ class Wilcosky_ERB {
         $max_log_limit_enabled = get_option($this->opt_log_limit, false);
         $predefined_enabled    = get_option($this->opt_enable_predefined, false);
         $cleanup_on_uninstall  = get_option($this->opt_cleanup_uninst, false);
+        $max_dots_local_part   = get_option($this->opt_max_dots, 2);
 
         $logs            = (array) get_option('wilcosky_erb_block_log', []);
         $email_addresses = array_column($logs, 'email');
@@ -357,7 +412,7 @@ class Wilcosky_ERB {
                         </td>
                     </tr>
                     <tr>
-                        <th><?php printf(wp_kses(sprintf(__('Enable Predefined <a href="%s" target="_blank">Domain List</a>', 'wilcosky-email-blocker'), esc_url('https://github.com/zerosonesfun/wp-email-blocker/wiki/Known-Spam-Email-Domains')), ['a' => ['href' => [], 'target' => []]])); ?></th>
+                        <th><?php printf(wp_kses(sprintf(__('Enable Predefined <a href="%s" target="_blank">Domain List</a>', 'wilcosky-email-blocker'), esc_url('https://github.com/zerosonesfun/wp-email-blocker#predefined-block-list')), [ 'a' => [ 'href' => [], 'target' => [] ] ]); ?></th>
                         <td>
                             <label>
                                 <input type="hidden" name="<?php echo esc_attr($this->opt_enable_predefined); ?>" value="0" />
@@ -365,6 +420,13 @@ class Wilcosky_ERB {
                                 <?php esc_html_e('Enable', 'wilcosky-email-blocker'); ?>
                                 <p class="description"><?php esc_html_e('If checked, 100 known emails will be blocked along with whatever you add above.', 'wilcosky-email-blocker'); ?></p>
                             </label>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><?php esc_html_e('Max Dots in Email Local Part', 'wilcosky-email-blocker'); ?></th>
+                        <td>
+                            <input type="number" name="<?php echo esc_attr($this->opt_max_dots); ?>" value="<?php echo esc_attr($max_dots_local_part); ?>" min="0" step="1" />
+                            <p class="description"><?php esc_html_e('Block registration if email contains more than this number of dots before the @ symbol. Default is 2.', 'wilcosky-email-blocker'); ?></p>
                         </td>
                     </tr>
                     <tr>
@@ -436,6 +498,7 @@ function wilcosky_erb_deactivate() {
     delete_option('wilcosky_erb_enable_predefined_domains');
     delete_option('wilcosky_erb_cleanup_on_uninstall');
     delete_option('wilcosky_erb_max_log_limit');
+    delete_option('wilcosky_erb_max_dots_local_part');
 }
 register_deactivation_hook(__FILE__, 'wilcosky_erb_deactivate');
 
@@ -450,6 +513,7 @@ function wilcosky_erb_uninstall() {
         delete_option('wilcosky_erb_cleanup_on_uninstall');
         delete_option('wilcosky_erb_block_log');
         delete_option('wilcosky_erb_enable_predefined_domains');
+        delete_option('wilcosky_erb_max_dots_local_part');
     }
 }
 register_uninstall_hook(__FILE__, 'wilcosky_erb_uninstall');
