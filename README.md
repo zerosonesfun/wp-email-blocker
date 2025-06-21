@@ -10,6 +10,7 @@ WP (Wilcosky) Email Blocker is a WordPress plugin designed to prevent users or b
 
 - Block specific email domains (e.g., `example.com`).
 - Block specific email addresses (e.g., `spam@example.com`).
+- Block emails with excessive dots.
 - Optionally include a predefined list of 100 common spam email domains. (See repository wiki for the list)
 - A simple log shows you it's working and which emails are being used repeatedly.
 - Easy-to-use interface to manage blocked emails using a "pill" UI.
