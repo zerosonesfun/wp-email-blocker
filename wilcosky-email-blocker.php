@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Wilcosky Email Registration Blocker
  * Description: Block specific email domains and full email addresses from registering on your WordPress site—mandatory across all entry points including REST API and custom forms.
- * Version: 1.4.3
+ * Version: 1.4.4
  * Author: Billy Wilcosky
  * Text Domain: wilcosky-email-blocker
  * Domain Path: /languages
@@ -205,6 +205,30 @@ class Wilcosky_ERB {
         delete_transient('wilcosky_erb_block_lists');
     }
 
+    /**
+     * Get the max dots setting, fallback to 2 if not set.
+     */
+    private function get_max_dots_setting() {
+        $value = get_option($this->opt_max_dots, 2);
+        if (!is_numeric($value) || $value < 0) {
+            return 2;
+        }
+        return (int) $value;
+    }
+
+    /**
+     * Check if email has more than allowed dots in local part.
+     */
+    private function has_too_many_dots($email) {
+        $at_pos = strpos($email, '@');
+        if ($at_pos === false) {
+            return false;
+        }
+        $local = substr($email, 0, $at_pos);
+        $dot_count = substr_count($local, '.');
+        return $dot_count > $this->get_max_dots_setting();
+    }
+
     private function is_blocked($email, $log = true) {
         $lists    = $this->get_block_lists();
         $email_lc = strtolower($email);
@@ -240,30 +264,6 @@ class Wilcosky_ERB {
         }
 
         update_option('wilcosky_erb_block_log', $log);
-    }
-
-    /**
-     * Get the max dots setting, fallback to 2 if not set.
-     */
-    private function get_max_dots_setting() {
-        $value = get_option($this->opt_max_dots, 2);
-        if (!is_numeric($value) || $value < 0) {
-            return 2;
-        }
-        return (int) $value;
-    }
-
-    /**
-     * Check if email has more than allowed dots in local part.
-     */
-    private function has_too_many_dots($email) {
-        $at_pos = strpos($email, '@');
-        if ($at_pos === false) {
-            return false;
-        }
-        $local = substr($email, 0, $at_pos);
-        $dot_count = substr_count($local, '.');
-        return $dot_count > $this->get_max_dots_setting();
     }
 
     public function check_blocked_email($errors, $sanitized_user_login, $user_email) {
@@ -412,7 +412,7 @@ class Wilcosky_ERB {
                         </td>
                     </tr>
                     <tr>
-                        <th><?php printf(wp_kses(sprintf(__('Enable Predefined <a href="%s" target="_blank">Domain List</a>', 'wilcosky-email-blocker'), esc_url('https://github.com/zerosonesfun/wp-email-blocker#predefined-block-list')), [ 'a' => [ 'href' => [], 'target' => [] ] ]); ?></th>
+                        <th><?php printf(wp_kses(sprintf(__('Enable Predefined <a href="%s" target="_blank">Domain List</a>', 'wilcosky-email-blocker'), esc_url('https://github.com/zerosonesfun/wp-email-blocker/wiki/Known-Spam-Email-Domains')), ['a' => ['href' => [], 'target' => []]])); ?></th>
                         <td>
                             <label>
                                 <input type="hidden" name="<?php echo esc_attr($this->opt_enable_predefined); ?>" value="0" />
